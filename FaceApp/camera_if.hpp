@@ -34,6 +34,7 @@
 #include "mbed.h"
 #include "DisplayBace.h"
 #include "opencv.hpp"
+#include "EasyAttach_CameraAndLCD.h"
 
 /* Video input and LCD layer 0 output */
 #define VIDEO_FORMAT           (DisplayBase::VIDEO_FORMAT_YCBCR422)
@@ -43,8 +44,16 @@
 
 /*! Frame buffer stride: Frame buffer stride should be set to a multiple of 32 or 128
     in accordance with the frame buffer burst transfer mode. */
-#define VIDEO_PIXEL_HW         (320u)  /* VGA */
-#define VIDEO_PIXEL_VW         (240u)  /* VGA */
+#if MBED_CONF_APP_LCD
+  #define VIDEO_PIXEL_HW       LCD_PIXEL_WIDTH
+  #define VIDEO_PIXEL_VW       LCD_PIXEL_HEIGHT
+  #if (MBED_CONF_APP_LCD_TYPE == GR_PEACH_4_3INCH_SHIELD) || (MBED_CONF_APP_LCD_TYPE == GR_LYCHEE_TF043HV001A0)
+  #define ASPECT_RATIO_16_9    (1)
+  #endif
+#else
+  #define VIDEO_PIXEL_HW       (320u)  /* QVGA */
+  #define VIDEO_PIXEL_VW       (240u)  /* QVGA */
+#endif
 
 #define FRAME_BUFFER_STRIDE    (((VIDEO_PIXEL_HW * DATA_SIZE_PER_PIC) + 31u) & ~31u)
 #define FRAME_BUFFER_HEIGHT    (VIDEO_PIXEL_VW)
@@ -77,5 +86,10 @@ uint8_t* get_jpeg_adr();
 * @return	None
 */
 void create_gray(cv::Mat &img_gray);
+
+#if MBED_CONF_APP_LCD
+void ClearSquare(void);
+void DrawSquare(int x, int y, int w, int h, uint32_t const colour);
+#endif
 
 #endif

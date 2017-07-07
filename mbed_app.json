@@ -13,13 +13,8 @@
             "value": "1"
         },
         "audio-camera-shield":{
-            "help": "(for GR-PEACH) 0:use 1:not use",
+            "help": "(for GR-PEACH) 0:not use 1:use",
             "value": "1"
-        }
-    },
-    "target_overrides": {
-        "*": {
-            "target.macros_add": ["HAVE_OPENCV_IMGCODECS"]
         }
     }
 }

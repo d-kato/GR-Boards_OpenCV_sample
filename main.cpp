@@ -24,6 +24,7 @@ DigitalOut led1(LED1);
 DigitalOut led2(LED2);
 DigitalOut led3(LED3);
 DigitalOut led4(LED4);
+Timer  detect_timer;
 
 int main() {
 #if (DBG_CAPTURE == 1)
@@ -51,6 +52,9 @@ int main() {
     printf("done\n");
     led2 = 1;
 
+    detect_timer.reset();
+    detect_timer.start();
+
     while (1) {
         // Retrieve a video frame (grayscale)
         create_gray(frame_gray);
@@ -66,12 +70,22 @@ int main() {
         if (face_roi.width > 0 && face_roi.height > 0) {   // A face is detected
             led1 = 1;
             printf("Detected a face X:%d Y:%d W:%d H:%d\n",face_roi.x, face_roi.y, face_roi.width, face_roi.height);
+#if MBED_CONF_APP_LCD
+            ClearSquare();
+            DrawSquare(face_roi.x, face_roi.y, face_roi.width, face_roi.height, 0x0000f0f0);
+#endif
+            detect_timer.reset();
 
 #if (DBG_CAPTURE == 1)
             sprintf(file_name, "/storage/detected_%d.bmp", file_name_index_detected++);
             imwrite(file_name, frame_gray);
 #endif
         } else {
+#if MBED_CONF_APP_LCD
+            if (detect_timer.read_ms() >= 1000) {
+                ClearSquare();
+            }
+#endif
             led1 = 0;
         }
 

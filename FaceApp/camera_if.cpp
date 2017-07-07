@@ -30,7 +30,6 @@
 
 #include "camera_if.hpp"
 #include "JPEG_Converter.h"
-#include "EasyAttach_CameraAndLCD.h"
 #include "dcache-control.h"
 
 using namespace cv;
@@ -41,6 +40,58 @@ static uint8_t JpegBuffer[1024 * 63]__attribute((aligned(32)));
 /* jpeg convert */
 static JPEG_Converter Jcu;
 static DisplayBase Display;
+
+#if MBED_CONF_APP_LCD
+#define RESULT_BUFFER_BYTE_PER_PIXEL  (2u)
+#define RESULT_BUFFER_STRIDE          (((VIDEO_PIXEL_HW * RESULT_BUFFER_BYTE_PER_PIXEL) + 31u) & ~31u)
+static uint8_t user_frame_buffer_result[RESULT_BUFFER_STRIDE * FRAME_BUFFER_HEIGHT]__attribute((section("NC_BSS"),aligned(32)));
+static bool draw_square = false;
+
+void ClearSquare(void) {
+    if (draw_square) {
+        memset(user_frame_buffer_result, 0, sizeof(user_frame_buffer_result));
+        draw_square = false;
+    }
+}
+
+void DrawSquare(int x, int y, int w, int h, uint32_t const colour) {
+    int idx_base;
+    int wk_idx;
+    int i;
+    uint8_t coller_pix[RESULT_BUFFER_BYTE_PER_PIXEL];  /* ARGB4444 */
+
+    idx_base = (x + (VIDEO_PIXEL_HW * y)) * RESULT_BUFFER_BYTE_PER_PIXEL;
+
+    /* Select color */
+    coller_pix[0] = (colour >> 8) & 0xff;  /* 4:Green 4:Blue */
+    coller_pix[1] = colour & 0xff;         /* 4:Alpha 4:Red  */
+
+    /* top */
+    wk_idx = idx_base;
+    for (i = 0; i < w; i++) {
+        user_frame_buffer_result[wk_idx++] = coller_pix[0];
+        user_frame_buffer_result[wk_idx++] = coller_pix[1];
+    }
+
+    /* middle */
+    for (i = 1; i < (h - 1); i++) {
+        wk_idx = idx_base + (VIDEO_PIXEL_HW * RESULT_BUFFER_BYTE_PER_PIXEL * i);
+        user_frame_buffer_result[wk_idx + 0] = coller_pix[0];
+        user_frame_buffer_result[wk_idx + 1] = coller_pix[1];
+        wk_idx += (w - 1) * RESULT_BUFFER_BYTE_PER_PIXEL;
+        user_frame_buffer_result[wk_idx + 0] = coller_pix[0];
+        user_frame_buffer_result[wk_idx + 1] = coller_pix[1];
+    }
+
+    /* bottom */
+    wk_idx = idx_base + (VIDEO_PIXEL_HW * RESULT_BUFFER_BYTE_PER_PIXEL * (h - 1));
+    for (i = 0; i < w; i++) {
+        user_frame_buffer_result[wk_idx++] = coller_pix[0];
+        user_frame_buffer_result[wk_idx++] = coller_pix[1];
+    }
+    draw_square = true;
+}
+#endif
 
 size_t encode_jpeg(uint8_t* buf, int len, int width, int height, uint8_t* inbuf) {
     size_t encode_size;
@@ -82,7 +133,11 @@ void camera_start(void)
     }
 
     // Camera
-    EasyAttach_Init(Display);
+#if ASPECT_RATIO_16_9
+    EasyAttach_Init(Display, 640, 360);  //aspect ratio 16:9
+#else
+    EasyAttach_Init(Display);            //aspect ratio 4:3
+#endif
 
     // Video capture setting (progressive form fixed)
     Display.Video_Write_Setting(
@@ -96,6 +151,45 @@ void camera_start(void)
         VIDEO_PIXEL_HW
     );
     EasyAttach_CameraStart(Display, DisplayBase::VIDEO_INPUT_CHANNEL_0);
+
+#if MBED_CONF_APP_LCD
+    DisplayBase::rect_t rect;
+
+    // GRAPHICS_LAYER_0
+    rect.vs = 0;
+    rect.vw = VIDEO_PIXEL_VW;
+    rect.hs = 0;
+    rect.hw = VIDEO_PIXEL_HW;
+    Display.Graphics_Read_Setting(
+        DisplayBase::GRAPHICS_LAYER_0,
+        (void *)FrameBuffer_Video,
+        FRAME_BUFFER_STRIDE,
+        GRAPHICS_FORMAT,
+        WR_RD_WRSWA,
+        &rect
+    );
+    Display.Graphics_Start(DisplayBase::GRAPHICS_LAYER_0);
+
+    // GRAPHICS_LAYER_2
+    memset(user_frame_buffer_result, 0, sizeof(user_frame_buffer_result));
+
+    rect.vs = 0;
+    rect.vw = VIDEO_PIXEL_VW;
+    rect.hs = 0;
+    rect.hw = VIDEO_PIXEL_HW;
+    Display.Graphics_Read_Setting(
+        DisplayBase::GRAPHICS_LAYER_2,
+        (void *)user_frame_buffer_result,
+        RESULT_BUFFER_STRIDE,
+        DisplayBase::GRAPHICS_FORMAT_ARGB4444,
+        DisplayBase::WR_RD_WRSWA_32_16BIT,
+        &rect
+    );
+    Display.Graphics_Start(DisplayBase::GRAPHICS_LAYER_2);
+
+    Thread::wait(50);
+    EasyAttach_LcdBacklight(true);
+#endif
 }
 
 /* Takes a video frame */
