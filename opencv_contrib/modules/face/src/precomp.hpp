@@ -42,7 +42,9 @@
 
 #ifndef __OPENCV_PRECOMP_H__
 #define __OPENCV_PRECOMP_H__
-
+#ifdef __MBED__
+#define __OPENCV_BUILD
+#endif
 #include "opencv2/imgproc.hpp"
 #include "opencv2/core.hpp"
 #include "opencv2/core/utility.hpp"
