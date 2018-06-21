@@ -26,7 +26,9 @@ DigitalOut led3(LED3);
 DigitalOut led4(LED4);
 Timer  detect_timer;
 
-int main() {
+static Thread mainTask(osPriorityNormal, (1024 * 33));
+
+static void main_task(void) {
 #if (DBG_CAPTURE == 1)
     char file_name[32];
     int file_name_index_detected = 1;
@@ -95,4 +97,9 @@ int main() {
 #endif
 
     }
+}
+
+int main(void) {
+    mainTask.start(callback(main_task));
+    mainTask.join();
 }
