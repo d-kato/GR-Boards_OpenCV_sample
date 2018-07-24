@@ -1,5 +1,7 @@
 # GR-Boards_OpenCV_sample
 GR-PEACH、および、GR-LYCHEEで動作するサンプルプログラムです。  
+本サンプルはMbedオンラインコンパイラでは使用できません。  
+OpenCVライブラリがGCC_ARMコンパイラにのみ対応しているため、Mbed CLI環境などでコンパイラにGCC_ARMを指定してご利用ください。  
 GR-LYCHEEの開発環境については、[GR-LYCHEE用オフライン開発環境の手順](https://developer.mbed.org/users/dkato/notebook/offline-development-lychee-langja/)を参照ください。
 
 
